@@ -260,3 +260,4 @@ cython_debug/
 /pdf.py
 
 /visuals/
+/hsr_size_analyzer.db
