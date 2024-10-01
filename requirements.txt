@@ -1,0 +1,6 @@
+duckdb~=1.1.1
+pandas~=2.2.3
+python-dotenv~=1.0.1
+ruff~=0.6.8
+pytest~=8.3.3
+pytest-mock~=3.14.0

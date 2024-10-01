@@ -21,7 +21,7 @@ Display visualizations that illustrate the distribution of game sizes for Honkai
 ### Run the Script
 * Run the Python script:
     ```bash
-    python hsr_size_analyzer.py
+    python main.py
     ```
 * The game size data is stored in an SQLite database
   > The database will be created automatically if it doesn’t already exist.
