@@ -6,9 +6,7 @@ import pandas as pd
 
 def get_file_distribution(directory: str) -> pd.DataFrame:
     directory = normalize_directory_path(directory)
-
-    # Ensure the directory ends with a forward slash
-    directory = os.path.join(directory, '')
+    directory = os.path.abspath(directory)  # Get absolute path
 
     # Dictionary to store total size and a set of directories for each extension
     file_data: dict[str, list[Any]] = {
@@ -24,20 +22,11 @@ def get_file_distribution(directory: str) -> pd.DataFrame:
             file_path = os.path.join(root, file)
             file_ext = get_file_extension(file)
             relative_path = os.path.relpath(root, directory)
-
-            if relative_path == '.':
-                file_dir = 'Root Directory'
-            else:
-                file_dir = relative_path
-
+            file_dir = 'Root Directory' if relative_path == '.' else relative_path
             full_file_path = os.path.relpath(file_path, directory)
-
-            if file_ext == '':
-                file_ext = 'No extension'
-
-            file_size = os.path.getsize(file_path)  # Get file size
-
-            file_data['Extension'].append(file_ext)
+            file_size = os.path.getsize(file_path)
+            
+            file_data['Extension'].append(file_ext or 'No extension')
             file_data['Size'].append(file_size)
             file_data['Directory'].append(file_dir)
             file_data['Full Path'].append(full_file_path)
@@ -79,4 +68,4 @@ def normalize_directory_path(directory: str) -> str:
     :param directory: The directory path to be normalized.
     :return: The normalized directory path.
     """
-    return directory.replace('\\\\', '/').replace('\\', '/').replace('//', '/')
+    return os.path.normpath(directory).replace(os.sep, '/')
