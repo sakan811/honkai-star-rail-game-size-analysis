@@ -48,21 +48,6 @@ def get_file_distribution(directory: str) -> pd.DataFrame:
     return df
 
 
-def get_directory_name(file_dir_list: list[str]) -> str:
-    """
-    Get the directory name based on the length of the directory list.
-    If the length is 1, return the first element. If the length is 2 or more, return the second element.
-    :param file_dir_list: List of directory elements.
-    :return: The updated directory name.
-    """
-    if len(file_dir_list) == 1:
-        return file_dir_list[0]
-    elif len(file_dir_list) >= 2:
-        return file_dir_list[1]
-    else:
-        raise SystemExit('The list of directory is empty.')
-
-
 def get_file_extension(file: str) -> str:
     """
     Get the lowercase extension of a file.
@@ -79,4 +64,14 @@ def normalize_directory_path(directory: str) -> str:
     :param directory: The directory path to be normalized.
     :return: The normalized directory path.
     """
-    return directory.replace('\\\\', '/').replace('\\', '/').replace('//', '/')
+    if not directory:
+        return ""
+    
+    # First, replace all backslashes with forward slashes
+    normalized = directory.replace('\\', '/')
+    
+    # Then, collapse multiple consecutive slashes into a single slash
+    while '//' in normalized:
+        normalized = normalized.replace('//', '/')
+    
+    return normalized
