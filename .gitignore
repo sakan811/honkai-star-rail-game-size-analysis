@@ -261,3 +261,4 @@ cython_debug/
 
 /visuals/
 /hsr_size_analyzer.db
+.codiumai

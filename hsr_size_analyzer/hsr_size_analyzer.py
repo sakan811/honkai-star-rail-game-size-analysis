@@ -1,3 +1,4 @@
+import functools
 import os
 from typing import Any
 
@@ -55,12 +56,9 @@ def normalize_directory_path(directory: str) -> str:
     """
     if not directory:
         return ""
-    
-    # First, replace all backslashes with forward slashes
-    normalized = directory.replace('\\', '/')
-    
-    # Then, collapse multiple consecutive slashes into a single slash
-    while '//' in normalized:
-        normalized = normalized.replace('//', '/')
-    
-    return normalized
+
+    # Replace backslashes with forward slashes
+    forward_slashed = directory.replace('\\', '/')
+
+    # Collapse multiple consecutive slashes into a single slash
+    return functools.reduce(lambda x, _: x.replace('//', '/'), range(forward_slashed.count('//')), forward_slashed)
