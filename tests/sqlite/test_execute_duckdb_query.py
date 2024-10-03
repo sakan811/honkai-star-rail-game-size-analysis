@@ -4,9 +4,13 @@ import pytest
 
 from hsr_size_analyzer.sqlite import execute_duckdb_query
 
+@pytest.fixture
+def duckdb_con():
+    return duckdb.connect(':memory:')
+
 
 # Executes a valid SQL query on a provided DataFrame
-def test_execute_valid_query():
+def test_execute_valid_query(duckdb_con):
     query = "SELECT * FROM df"
     data = {'A': [1, 2, 3], 'B': [4, 5, 6]}
     df = pd.DataFrame(data)
@@ -15,7 +19,7 @@ def test_execute_valid_query():
 
 
 # Successfully registers the DataFrame in DuckDB
-def test_successfully_registers_dataframe():
+def test_successfully_registers_dataframe(duckdb_con):
     query = "SELECT * FROM df"
     data = {'A': [1, 2, 3], 'B': [4, 5, 6]}
     df = pd.DataFrame(data)
@@ -24,7 +28,7 @@ def test_successfully_registers_dataframe():
 
 
 # Returns a DataFrame with the expected results
-def test_returns_expected_dataframe():
+def test_returns_expected_dataframe(duckdb_con):
     query = "SELECT * FROM df"
     data = {'A': [1, 2, 3], 'B': [4, 5, 6]}
     df = pd.DataFrame(data)
@@ -34,7 +38,7 @@ def test_returns_expected_dataframe():
 
 
 # Handles an empty DataFrame
-def test_handles_empty_dataframe():
+def test_handles_empty_dataframe(duckdb_con):
     query = "SELECT * FROM df"
     df = pd.DataFrame()
     with pytest.raises(duckdb.InvalidInputException):
@@ -42,7 +46,7 @@ def test_handles_empty_dataframe():
 
 
 # Deals with DataFrame containing null values
-def test_deals_with_dataframe_containing_null_values():
+def test_deals_with_dataframe_containing_null_values(duckdb_con):
     query = "SELECT * FROM df"
     df = pd.DataFrame({'A': [1, None, 3], 'B': [None, 5, 6]})
     result = execute_duckdb_query(query, df)
@@ -50,7 +54,7 @@ def test_deals_with_dataframe_containing_null_values():
 
 
 # Handles DataFrame with special characters in column names
-def test_handles_dataframe_with_special_characters():
+def test_handles_dataframe_with_special_characters(duckdb_con):
     query = "SELECT `column@#` FROM df"
     data = {'column@#': [1, 2, 3]}
     df = pd.DataFrame(data)
