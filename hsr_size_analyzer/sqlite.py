@@ -1,8 +1,10 @@
 import sqlite3
-from typing import Dict, Any, Literal
+from typing import Dict, Any, Literal, Tuple
 
 import duckdb
 import pandas as pd
+
+from hsr_size_analyzer.logger_config import main_logger
 
 
 def create_proportion_query(group_by_column: str) -> str:
@@ -26,12 +28,13 @@ def execute_duckdb_query(query: str, df: pd.DataFrame) -> pd.DataFrame:
     """
     Execute a query using DuckDB and a provided DataFrame.
 
-    :param query: The SQL query to execute.
-    :param df: The DataFrame to be used in the query.
-    :return: The result DataFrame after executing the query.
+    :param query: The SQL query to be executed.
+    :param df: DataFrame to be used in the query.
+    :return: DataFrame containing the result after executing the query.
     """
-    # Create a DuckDB connection and register the DataFrame
     con = duckdb.connect(':memory:')
+
+    # Register the DataFrame
     con.register('df', df)
     result = con.execute(query).fetchdf()
     con.close()
@@ -66,19 +69,55 @@ def write_to_sqlite(conn: sqlite3.Connection,
     df.to_sql(table_name, con=conn, if_exists=if_exists, dtype=dtype)
 
 
-def save_to_db(df: pd.DataFrame, db: str = 'hsr_size_analyzer.db') -> None:
+def analyze_data(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Save DataFrame to an SQLite database after analyzing file sizes by extension and directory.
+    Analyze the data in the DataFrame by calculating the proportion based on file extensions and directories.
 
-    :param db: SQLite database file path.
-                Default is 'hsr_size_analyzer.db'
-    :param df: DataFrame containing file size data.
-    :return: None
+    :param df: DataFrame containing the data to be analyzed.
+    :return: A tuple of two DataFrames representing the analysis results for file extensions and directories.
     """
     file_ext_df = execute_duckdb_query(create_proportion_query('Extension'), df)
     file_dir_df = execute_duckdb_query(create_proportion_query('Directory'), df)
+    return file_ext_df, file_dir_df
 
-    with sqlite3.connect(db) as conn:
-        write_to_sqlite(conn, df, 'HsrSizeAnalysis', dtype=get_data_type())
-        write_to_sqlite(conn, file_ext_df, 'HsrSizeDist')
-        write_to_sqlite(conn, file_dir_df, 'HsrDirDist')
+
+def save_analysis_to_db(df: pd.DataFrame, file_ext_df: pd.DataFrame, file_dir_df: pd.DataFrame,
+                        db: str = 'hsr_size_analyzer.db') -> None:
+    """
+    Save the analysis results to an SQLite database.
+
+    :param df: DataFrame containing the original data.
+    :param file_ext_df: DataFrame with file extension analysis results.
+    :param file_dir_df: DataFrame with directory analysis results.
+    :param db: Name of the SQLite database file to save the analysis results (default is 'hsr_size_analyzer.db').
+    :return: None
+    """
+    try:
+        with sqlite3.connect(db) as conn:
+            write_to_sqlite(conn, df, 'HsrSizeAnalysis', dtype=get_data_type())
+            write_to_sqlite(conn, file_ext_df, 'HsrSizeDist')
+            write_to_sqlite(conn, file_dir_df, 'HsrDirDist')
+    except sqlite3.OperationalError as e:
+        main_logger.error(f"OperationalError during saving to database {db}: {e}", exc_info=True)
+        conn.rollback()
+    except Exception as e:
+        main_logger.error(f"Unexpected error during saving to database {db}: {e}", exc_info=True)
+        conn.rollback()
+
+
+def save_to_db(df: pd.DataFrame, db: str = 'hsr_size_analyzer.db') -> None:
+    """
+    Save the DataFrame to an SQLite database after analyzing the data based on file extensions and directories.
+
+    :param df: DataFrame containing the data to be saved and analyzed.
+    :param db: Name of the SQLite database file to save the analysis results (default is 'hsr_size_analyzer.db').
+    :return: None
+    """
+    file_ext_df, file_dir_df = analyze_data(df)
+
+    try:
+        save_analysis_to_db(df, file_ext_df, file_dir_df, db)
+    except sqlite3.OperationalError as e:
+        main_logger.error(f"OperationalError during saving to database {db}: {e}", exc_info=True)
+    except Exception as e:
+        main_logger.error(f"Unexpected error during saving to database {db}: {e}", exc_info=True)
