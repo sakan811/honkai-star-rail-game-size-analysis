@@ -1,41 +1,83 @@
-import functools
 import os
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
 
 
 def get_file_distribution(directory: str) -> pd.DataFrame:
+    """
+    Generate a DataFrame containing file distribution information for a given directory.
+    :param directory: The path to the directory to analyze.
+                    This can be either an absolute path or relative path.
+    :return: Pandas DataFrame containing file distribution information.
+    """
     directory = normalize_directory_path(directory)
     directory = os.path.abspath(directory)
 
-    # Dictionary to store total size and a set of directories for each extension
-    file_data: dict[str, list[Any]] = {
+    file_data = collect_file_data(directory)
+    return create_dataframe(file_data)
+
+
+def collect_file_data(directory: str) -> Dict[str, List[Any]]:
+    """
+    Collect file data from the given directory and its subdirectories.
+    :param directory: Path to the directory to analyze
+    :return: Dictionary containing lists of file information
+    """
+    file_data: Dict[str, List[Any]] = {
         'Extension': [],
         'Size': [],
         'Directory': [],
         'Full Path': []
     }
 
-    # Walk through the directory
     for root, _, files in os.walk(directory):
         for file in files:
-            file_path = os.path.join(root, file)
-            file_ext = get_file_extension(file)
-            relative_path = os.path.relpath(root, directory)
-            file_dir = 'Root Directory' if relative_path == '.' else relative_path
-            full_file_path = os.path.relpath(file_path, directory)
-            file_size = os.path.getsize(file_path)
-            
-            file_data['Extension'].append(file_ext or 'No extension')
-            file_data['Size'].append(file_size)
-            file_data['Directory'].append(file_dir)
-            file_data['Full Path'].append(full_file_path)
+            file_info = get_file_info(root, file, directory)
+            append_file_info(file_data, file_info)
 
-    # Create a DataFrame from the extension data
-    df = pd.DataFrame(file_data, columns=['Extension', 'Size', 'Directory', 'Full Path'])
+    return file_data
 
-    return df
+
+def get_file_info(root: str, file: str, base_directory: str) -> Tuple[str, int, str, str]:
+    """
+    Gather information about a specific file.
+    :param root: The root directory of the file
+    :param file: The name of the file
+    :param base_directory: The base directory for relative path calculations
+    :return: Tuple containing file extension, size, directory, and full path
+    """
+    file_path = os.path.join(root, file)
+    file_ext = get_file_extension(file)
+    relative_path = os.path.relpath(root, base_directory)
+    file_dir = 'Root Directory' if relative_path == '.' else relative_path
+    full_file_path = os.path.relpath(file_path, base_directory)
+    file_size = os.path.getsize(file_path)
+
+    return file_ext, file_size, file_dir, full_file_path
+
+
+def append_file_info(file_data: Dict[str, List[Any]], file_info: Tuple[str, int, str, str]) -> None:
+    """
+    Append file information to the file_data dictionary.
+    :param file_data: Dictionary containing lists of file information
+    :param file_info: Tuple containing information about a single file
+    :return: None
+    """
+    file_ext, file_size, file_dir, full_file_path = file_info
+    file_data['Extension'].append(file_ext or 'No extension')
+    file_data['Size'].append(file_size)
+    file_data['Directory'].append(file_dir)
+    file_data['Full Path'].append(full_file_path)
+
+
+def create_dataframe(file_data: Dict[str, List[Any]]) -> pd.DataFrame:
+    """
+    Create a pandas DataFrame from the collected file data.
+    :param file_data: Dictionary containing lists of file information
+    :return: DataFrame with columns for Extension, Size, Directory, and Full Path
+    """
+    return pd.DataFrame(file_data, columns=['Extension', 'Size', 'Directory', 'Full Path'])
 
 
 def get_file_extension(file: str) -> str:
@@ -49,8 +91,9 @@ def get_file_extension(file: str) -> str:
 
 def normalize_directory_path(directory: str) -> str:
     """
-    Normalize the directory path by replacing backslashes with forward slashes.
-    If the directory contains double backslashes, they are also replaced with forward slashes.
+    Normalize the directory path by replacing backslashes with forward slashes,
+    collapsing multiple consecutive slashes, and preserving trailing slashes.
+
     :param directory: The directory path to be normalized.
     :return: The normalized directory path.
     """
@@ -58,7 +101,18 @@ def normalize_directory_path(directory: str) -> str:
         return ""
 
     # Replace backslashes with forward slashes
-    forward_slashed = directory.replace('\\', '/')
+    normalized = directory.replace('\\', '/')
 
-    # Collapse multiple consecutive slashes into a single slash
-    return functools.reduce(lambda x, _: x.replace('//', '/'), range(forward_slashed.count('//')), forward_slashed)
+    # Collapse multiple slashes, but preserve leading double slash for UNC paths
+    if normalized.startswith('//'):
+        normalized = '/' + normalized.lstrip('/')
+    normalized = os.path.normpath(normalized)
+
+    # Replace backslashes again (normpath may have added some)
+    normalized = normalized.replace('\\', '/')
+
+    # Preserve the trailing slash if it was in the original path
+    if directory.endswith('/') or directory.endswith('\\'):
+        normalized += '/'
+
+    return normalized
