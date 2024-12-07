@@ -85,3 +85,16 @@ def test_handles_mixed_slashes():
 
     # Then
     assert normalized_path == 'C:/Users/Documents/Project/Files'
+
+
+def test_normalize_directory_path_with_trailing_slashes():
+    test_cases = [
+        ('C:\\Users\\test\\', 'C:/Users/test/'),
+        ('C:\\\\Users\\\\test\\\\', 'C:/Users/test/'),
+        ('/home/user//test//', '/home/user/test/'),
+        ('//home//user//test//', '/home/user/test/'),
+    ]
+
+    for input_path, expected_output in test_cases:
+        assert normalize_directory_path(input_path) == expected_output, \
+            f"Failed for input: {input_path}"
