@@ -1,4 +1,4 @@
-duckdb~=1.2.0
+duckdb~=1.2.1
 pandas~=2.2.3
 python-dotenv~=1.0.1
 ruff~=0.9.10
